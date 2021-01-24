@@ -1,5 +1,7 @@
-from . import base
+"""uRPCTools package for quick JSON-like RPC server-clients applications"""
 
-from .base import *
+from . import urpctools
 
-__all__ = base.__all__
+from .urpctools import *
+
+__all__ = urpctools.__all__
