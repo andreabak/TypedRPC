@@ -1,4 +1,5 @@
-"""uRPCTools package for quick JSON-like RPC server-clients applications"""
+"""TypedRPC package for quick JSON-like RPC server-clients applications
+with dataclasses and type annotations"""
 
 from . import models
 from . import service
