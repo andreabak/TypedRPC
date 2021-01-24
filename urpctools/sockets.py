@@ -1,48 +1,25 @@
-"""uRPCTools monolithic code module"""
+"""RPC service using raw socket"""
 
 import json
 import socket
 from abc import ABC, abstractmethod
-from typing import TypedDict, TypeVar, Type, ClassVar, Optional, Tuple, Generic
+from typing import ClassVar, Optional, Tuple
+
+from .service import RPCError, RQ, RS, RPCService, RPCClientBase, RPCServerBase
+
 
 __all__ = [
-    'RPCError',
-    'RPCPacket',
-    'RPCRequest',
-    'RPCResponse',
-    'RPCService',
-    'RPCClientBase',
-    'RPCServerBase',
+    'RPCSocketService',
+    'RPCSocketClientBase',
+    'RPCSocketServerBase',
 ]
 
 
-class RPCError(Exception):
-    """Base class for RPC Exceptions"""
-
-
-class RPCPacket(TypedDict):
-    """Base class for RPC requests and responses"""
-
-
-class RPCRequest(RPCPacket):
-    """Base class for RPC requests"""
-
-
-class RPCResponse(RPCPacket):
-    """Base class for RPC requests"""
-
-
-Rq = TypeVar('Rq', bound=RPCRequest)
-Rs = TypeVar('Rs', bound=RPCResponse)
-
-
-# pylint: disable=not-callable
-class RPCService(ABC, Generic[Rq, Rs]):
+# pylint: disable=not-callable,missing-function-docstring
+class RPCSocketService(RPCService[RQ, RS], ABC):
     """
     Common base class for JSON RPC over TCP servers and clients classes
     """
-    _req_cls: Type[Rq] = NotImplemented
-    _resp_cls: Type[Rs] = NotImplemented
 
     _ping_resp: ClassVar[bytes] = b'pong'
     _ping_req: ClassVar[bytes] = b'ping'
@@ -83,7 +60,8 @@ class RPCService(ABC, Generic[Rq, Rs]):
         """
 
 
-class RPCClientBase(RPCService, ABC):
+# pylint: disable=missing-function-docstring
+class RPCSocketClientBase(RPCClientBase[RQ, RS], RPCSocketService[RQ, RS], ABC):
     """
     Base class for client classes that implement JSON RPC over TCP clients
     """
@@ -115,7 +93,7 @@ class RPCClientBase(RPCService, ABC):
             raise RPCError(f'Socket error: {exc}') from exc
         return resp_data_raw
 
-    def _ping(self, **create_socket_kwargs) -> bool:
+    def _ping(self, **create_socket_kwargs) -> bool:  # TODO: implement proper ping request-response
         """
         Pings the server for connectivity testing
         :param create_socket_kwargs: additional keyword arguments for socket creation
@@ -129,7 +107,7 @@ class RPCClientBase(RPCService, ABC):
             return False
         return True
 
-    def _rpc(self, req_data: Rq, **create_socket_kwargs) -> Rs:
+    def _rpc(self, req_data: RQ, **create_socket_kwargs) -> RS:
         """
         Sends a request and awaits for a response
         :param req_data: the request data as an instance of the bound request class
@@ -143,14 +121,15 @@ class RPCClientBase(RPCService, ABC):
         resp_data_raw: bytes = self._send_and_receive(req_data_raw, **create_socket_kwargs)
 
         try:
-            resp_data: Rs = self._resp_cls(**json.loads(resp_data_raw))
+            resp_data: RS = self._resp_cls(**json.loads(resp_data_raw))
         except json.JSONDecodeError as exc:
             raise RPCError(f'Failed decoding json response: {exc}') from exc
         # TODO: Validate response
         return resp_data
 
 
-class RPCServerBase(RPCService, ABC):
+# pylint: disable=missing-function-docstring
+class RPCSocketServerBase(RPCServerBase[RQ, RS], RPCSocketService[RQ, RS], ABC):
     """
     Base class for client classes that implement JSON RPC over TCP servers
     """
@@ -186,28 +165,13 @@ class RPCServerBase(RPCService, ABC):
                     if req_data_raw == self._ping_req:
                         conn.sendall(self._ping_resp + self._eof)
                     else:
-                        req_data: Rq = self._req_cls(**json.loads(req_data_raw))
-                        resp_data: Rs = self.rpc_callback(req_data)
+                        req_data: RQ = self._req_cls(**json.loads(req_data_raw))
+                        resp_data: RS = self.rpc_callback(req_data)
                         resp_data_raw: bytes = json.dumps(resp_data).encode()
                         conn.sendall(resp_data_raw)
 
-    start = _listen
-
-    @abstractmethod
-    def rpc_callback(self, req_data: Rq) -> Rs:
-        """
-        Callback for a received request to produce a response
-        :param req_data: the received RPCRequest object
-        :return: an RPCResponse object
-        """
-
-    # noinspection PyMethodMayBeStatic
-    def stop_callback(self) -> bool:  # pylint: disable=no-self-use
-        """
-        Callback to stop the server
-        :return: True if the server must be stopped else False
-        """
-        return True
+    def start(self, **kwargs) -> None:
+        self._listen(**kwargs)
 
     def _no_clients_timeout_callback(self) -> None:
         """
