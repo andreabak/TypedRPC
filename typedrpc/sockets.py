@@ -5,18 +5,18 @@ import socket
 from abc import ABC, abstractmethod
 from typing import ClassVar, Optional, Tuple
 
-from .service import RPCError, RQ, RS, RPCService, RPCClientBase, RPCServerBase
+from .service import RPCError, RQ, RS, RPCServiceBase, RPCClientBase, RPCServerBase
 
 
 __all__ = [
-    'RPCSocketService',
+    'RPCSocketServiceBase',
     'RPCSocketClientBase',
     'RPCSocketServerBase',
 ]
 
 
 # pylint: disable=not-callable,missing-function-docstring
-class RPCSocketService(RPCService[RQ, RS], ABC):
+class RPCSocketServiceBase(RPCServiceBase[RQ, RS], ABC):
     """
     Common base class for JSON RPC over TCP servers and clients classes
     """
@@ -61,7 +61,7 @@ class RPCSocketService(RPCService[RQ, RS], ABC):
 
 
 # pylint: disable=missing-function-docstring
-class RPCSocketClientBase(RPCClientBase[RQ, RS], RPCSocketService[RQ, RS], ABC):
+class RPCSocketClientBase(RPCClientBase[RQ, RS], RPCSocketServiceBase[RQ, RS], ABC):
     """
     Base class for client classes that implement JSON RPC over TCP clients
     """
@@ -129,7 +129,7 @@ class RPCSocketClientBase(RPCClientBase[RQ, RS], RPCSocketService[RQ, RS], ABC):
 
 
 # pylint: disable=missing-function-docstring
-class RPCSocketServerBase(RPCServerBase[RQ, RS], RPCSocketService[RQ, RS], ABC):
+class RPCSocketServerBase(RPCServerBase[RQ, RS], RPCSocketServiceBase[RQ, RS], ABC):
     """
     Base class for client classes that implement JSON RPC over TCP servers
     """

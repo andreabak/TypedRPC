@@ -8,7 +8,7 @@ from .models import APIRequest, APIResponse
 
 __all__ = [
     "RPCError",
-    "RPCService",
+    "RPCServiceBase",
     "RPCClientBase",
     "RPCServerBase",
     "RQ",
@@ -24,7 +24,7 @@ RQ = TypeVar('RQ', bound=APIRequest)
 RS = TypeVar('RS', bound=APIResponse)
 
 
-class RPCService(ABC, Generic[RQ, RS]):
+class RPCServiceBase(ABC, Generic[RQ, RS]):
     """
     Common base class for RPC services
     """
@@ -32,7 +32,7 @@ class RPCService(ABC, Generic[RQ, RS]):
     _resp_cls: Type[RS] = NotImplemented
 
 
-class RPCClientBase(RPCService[RQ, RS], ABC):
+class RPCClientBase(RPCServiceBase[RQ, RS], ABC):
     """
     Base abstract class for RPC client classes
     """
@@ -47,7 +47,7 @@ class RPCClientBase(RPCService[RQ, RS], ABC):
         """
 
 
-class RPCServerBase(RPCService[RQ, RS], ABC):
+class RPCServerBase(RPCServiceBase[RQ, RS], ABC):
     """
     Base abstract class for RPC server classes
     """
