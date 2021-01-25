@@ -14,15 +14,18 @@ __all__ = [
 
 class BackgroundServiceThreadBase(ABC):
     """
-    An abstract base class that implements basic interface and functionality for a background threaded service
+    An abstract base class that implements basic interface and functionality
+    for a background threaded service.
     """
+
     def __init__(self, start: bool = False, safe_stop: bool = True):
         """
         Initialization for BackgroundServiceThreadBase
         :param start: if True the thread starts immediately after initialization.
                       Defaults to False
-        :param safe_stop: if False makes the thread daemonic and doesn't wait for it to stop.
-                      Defaults to True
+        :param safe_stop: if False makes the thread daemonic
+                          and doesn't wait for it to stop when using `.stop()`.
+                          Defaults to True
         """
         self._stop_event: Event = Event()
         self._safe_stop: bool = safe_stop
@@ -71,25 +74,34 @@ class BackgroundServiceThreadBase(ABC):
 
 
 class StoppableThreadMain(Protocol):
-    """Typing Protocol for thread target (main) functions used by `BackgroundServiceThread`"""
-    def __call__(self, *args: Any, stop_event: Optional[Event] = None, **kwargs: Any): ...
+    """Typing Protocol for thread main function used by `BackgroundServiceThread`"""
+
+    def __call__(self, *args: Any, stop_event: Optional[Event] = None, **kwargs: Any):
+        ...
 
 
 class BackgroundServiceThread(BackgroundServiceThreadBase):
     """
     Generic background service thread class
     """
-    default_thread_name: str = 'BackgroundServiceThread'
+
+    default_thread_name: str = "BackgroundServiceThread"
     # noinspection PyTypeHints
     _services_count: Counter[str] = Counter()
 
-    def __init__(self, *args: Any, exec_fn: StoppableThreadMain,
-                 exec_args: Optional[Iterable[Any]] = None,
-                 exec_kwargs: Optional[MutableMapping[str, Any]] = None,
-                 thread_name: Optional[str] = None, **kwargs: Any):
+    def __init__(
+        self,
+        *args: Any,
+        exec_fn: StoppableThreadMain,
+        exec_args: Optional[Iterable[Any]] = None,
+        exec_kwargs: Optional[MutableMapping[str, Any]] = None,
+        thread_name: Optional[str] = None,
+        **kwargs: Any,
+    ):
         """
         Initialization for `BackgroundServiceThread`
-        :param exec_fn: the thread's main function. Must accept a `stop_event` keyword argument
+        :param exec_fn: the thread's main function.
+                        Must accept a `stop_event` keyword argument
         :param exec_args: additional positional arguments for the thread's function
         :param exec_kwargs: additional keyword arguments for the thread's function
         :param thread_name: the thread's name. If not specified the class' default is used.
@@ -132,14 +144,14 @@ class BackgroundServiceThread(BackgroundServiceThreadBase):
         """Helper function to generate the final thread's name"""
         assert self._thread_name is not None
         same_name_count: int = self._services_count[self._thread_name]
-        same_name_postfix: str = f'-{same_name_count}' if same_name_count else ""
+        same_name_postfix: str = f"-{same_name_count}" if same_name_count else ""
         return self._thread_name + same_name_postfix
 
     def _create_thread(self) -> Thread:
         return Thread(
             target=self._exec_fn,
             args=self._exec_args,
-            kwargs={**self._exec_kwargs, 'stop_event': self._stop_event},
+            kwargs={**self._exec_kwargs, "stop_event": self._stop_event},
             name=self._make_thread_name(),
-            daemon=(not self._safe_stop)
-       )
+            daemon=(not self._safe_stop),
+        )

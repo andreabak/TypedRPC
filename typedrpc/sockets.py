@@ -9,9 +9,9 @@ from .service import RPCError, RQ, RS, RPCServiceBase, RPCClientBase, RPCServerB
 
 
 __all__ = [
-    'RPCSocketServiceBase',
-    'RPCSocketClientBase',
-    'RPCSocketServerBase',
+    "RPCSocketServiceBase",
+    "RPCSocketClientBase",
+    "RPCSocketServerBase",
 ]
 
 
@@ -21,17 +21,17 @@ class RPCSocketServiceBase(RPCServiceBase[RQ, RS], ABC):
     Common base class for JSON RPC over TCP servers and clients classes
     """
 
-    _ping_resp: ClassVar[bytes] = b'pong'
-    _ping_req: ClassVar[bytes] = b'ping'
+    _ping_resp: ClassVar[bytes] = b"pong"
+    _ping_req: ClassVar[bytes] = b"ping"
     _socket_timeout: ClassVar[float] = 10.0
     _buffer_size: ClassVar[int] = 4096
-    _eof: bytes = b'\0'
+    _eof: bytes = b"\0"
 
     def _setup_socket(self, timeout: Optional[float] = None) -> socket.socket:
         """
         Sets up and configures a socket
         :param timeout: the timeout to use for the socket.
-                        If None or omitted the default class `_socket_timeout` value is used
+                        If None or omitted the class' `_socket_timeout` value is used
         :return: the prepared socket instance
         """
         sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -50,7 +50,7 @@ class RPCSocketServiceBase(RPCServiceBase[RQ, RS], ABC):
             resp_data_raw += data_chunk
             if self._eof in data_chunk or not data_chunk:
                 break
-        return resp_data_raw.rstrip(b'\0').strip()
+        return resp_data_raw.rstrip(b"\0").strip()
 
     @property
     @abstractmethod
@@ -65,6 +65,7 @@ class RPCSocketClientBase(RPCClientBase[RQ, RS], RPCSocketServiceBase[RQ, RS], A
     """
     Base class for client classes that implement JSON RPC over TCP clients
     """
+
     def _create_socket(self, **setup_socket_kwargs) -> socket.socket:
         """
         Creates the socket and connects to the server address
@@ -75,25 +76,28 @@ class RPCSocketClientBase(RPCClientBase[RQ, RS], RPCSocketServiceBase[RQ, RS], A
         sock.connect(self._socket_address)
         return sock
 
-    def _send_and_receive(self, req_data_raw: bytes, skip_receive: bool = False,
-                          **create_socket_kwargs) -> bytes:
+    def _send_and_receive(
+        self, req_data_raw: bytes, skip_receive: bool = False, **create_socket_kwargs
+    ) -> bytes:
         """
         Sends a raw request and awaits for a raw response
         :param req_data_raw: the raw request data in bytes
-        :param skip_receive: don't wait for a response, return immediately after sending the request
+        :param skip_receive: don't wait for a response,
+                             returns immediately after sending the request
         :param create_socket_kwargs: additional keyword arguments for socket creation
         :raise RPCError: if any socket error happen while sending or receiving data
-        :return: the raw response bytes or, if `skip_receive` is True, an empty bytes string
+        :return: the raw response bytes or, if `skip_receive` is True, empty bytes
         """
         try:
             with self._create_socket(**create_socket_kwargs) as sock:
                 sock.send(req_data_raw + self._eof)
-                resp_data_raw = self._recv_data(sock) if not skip_receive else b''
+                resp_data_raw = self._recv_data(sock) if not skip_receive else b""
         except (OSError, socket.error) as exc:
-            raise RPCError(f'Socket error: {exc}') from exc
+            raise RPCError(f"Socket error: {exc}") from exc
         return resp_data_raw
 
-    def _ping(self, **create_socket_kwargs) -> bool:  # TODO: implement proper ping request-response
+    # TODO: implement proper ping request-response
+    def _ping(self, **create_socket_kwargs) -> bool:
         """
         Pings the server for connectivity testing
         :param create_socket_kwargs: additional keyword arguments for socket creation
@@ -102,7 +106,7 @@ class RPCSocketClientBase(RPCClientBase[RQ, RS], RPCSocketServiceBase[RQ, RS], A
         try:
             resp: bytes = self._send_and_receive(self._ping_req, **create_socket_kwargs)
             if resp != self._ping_resp:
-                raise RPCError('Invalid ping response')
+                raise RPCError("Invalid ping response")
         except RPCError:
             return False
         return True
@@ -116,14 +120,15 @@ class RPCSocketClientBase(RPCClientBase[RQ, RS], RPCSocketServiceBase[RQ, RS], A
         :return: the response data as an instance of the bound response class
         """
         # TODO: Validate request
-
         req_data_raw: bytes = json.dumps(req_data).encode()
-        resp_data_raw: bytes = self._send_and_receive(req_data_raw, **create_socket_kwargs)
+        resp_data_raw: bytes = self._send_and_receive(
+            req_data_raw, **create_socket_kwargs
+        )
 
         try:
             resp_data: RS = self._resp_cls(**json.loads(resp_data_raw))
         except json.JSONDecodeError as exc:
-            raise RPCError(f'Failed decoding json response: {exc}') from exc
+            raise RPCError(f"Failed decoding json response: {exc}") from exc
         # TODO: Validate response
         return resp_data
 
@@ -133,6 +138,7 @@ class RPCSocketServerBase(RPCServerBase[RQ, RS], RPCSocketServiceBase[RQ, RS], A
     """
     Base class for client classes that implement JSON RPC over TCP servers
     """
+
     _socket_timeout: ClassVar[float] = 1.0
 
     def _create_socket(self, **setup_socket_kwargs) -> socket.socket:
@@ -152,7 +158,7 @@ class RPCSocketServerBase(RPCServerBase[RQ, RS], RPCSocketServiceBase[RQ, RS], A
         :param create_socket_kwargs: additional keyword arguments for socket creation
         """
         with self._create_socket(**create_socket_kwargs) as sock:
-            print(f'RPC server listening on {self._socket_address}')
+            print(f"RPC server listening on {self._socket_address}")
             while True:
                 try:
                     conn, addr = sock.accept()
@@ -160,7 +166,7 @@ class RPCSocketServerBase(RPCServerBase[RQ, RS], RPCSocketServiceBase[RQ, RS], A
                     self._no_clients_timeout_callback()
                     continue
                 with conn:
-                    print(f'New RPC connection from {addr}')
+                    print(f"New RPC connection from {addr}")
                     req_data_raw: bytes = self._recv_data(conn)
                     if req_data_raw == self._ping_req:
                         conn.sendall(self._ping_resp + self._eof)

@@ -20,14 +20,15 @@ class RPCError(Exception):
     """Base class for RPC Exceptions"""
 
 
-RQ = TypeVar('RQ', bound=APIRequest)
-RS = TypeVar('RS', bound=APIResponse)
+RQ = TypeVar("RQ", bound=APIRequest)
+RS = TypeVar("RS", bound=APIResponse)
 
 
 class RPCServiceBase(ABC, Generic[RQ, RS]):
     """
     Common base class for RPC services
     """
+
     _req_cls: Type[RQ] = NotImplemented
     _resp_cls: Type[RS] = NotImplemented
 
